@@ -1,126 +1,96 @@
+// create the base map
+var myMap = L.map("map", {
+    center: [37.09, -95.71],
+    zoom: 5
+  });
+
+// add the light layer tile 
+L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+maxZoom: 18,
+id: "mapbox.light",
+accessToken: API_KEY
+}).addTo(myMap);
+
+
+// get the url for data
 var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
-//  GET request to the query URL
-d3.json(queryUrl, function (data) {
-    //  send the data.features object to the createFeatures function
-    createFeatures(data.features);
-});
-
-function createFeatures(earthquakeData) {
-
-    // Define a function we want to run once for each feature in the features array
-    // Give each feature a popup describing the place and time of the earthquake
-    function onEachFeature(feature, layer) {
-        layer.bindPopup("<h3>" + feature.properties.place +
-            "</h3><hr><p>" + new Date(feature.properties.time) + "</p>" + "<h4> Magnitude: " + feature.properties.mag + "</h4>");
-    }
-
-
-    // Function for Circle Color Base on Criteria. 
-    function Quake_Color(Qcolor) {
-        switch (true) {
-            case (0 <= Qcolor && Qcolor <= 1.0):
-                return "Red";
-            case (1.0 <= Qcolor && Qcolor <= 2.0):
-                return "Orange";
-            case (2.0 <= Qcolor && Qcolor <= 3.0):
-                return "Yellow";
-            case (3.0 <= Qcolor && Qcolor <= 4.0):
-                return "Green";
-            case (4.0 <= Qcolor && Qcolor <= 5.0):
-                return "Blue";
-            case (5.0 <= Qcolor && Qcolor <= 6.0):
-                return "Indigo";
-            default:
-                return "Violet";
-        }
-    }
-    //   Create a circle function
-
-    function CircleMaker(features, latlng) {
-        var CircleOptions = {
-            radius: features.properties.mag * 8,
-            fillColor: Quake_Color(features.properties.mag),
-            color: Quake_Color(features.properties.mag),
-            opacity: 1.0,
-            fillOpacity: .5
-
-        }
-        return L.circleMarker(latlng, CircleOptions)
-    }
-    // Make a GeoJSON layer containing the features array on the earthquakeData object
-    // Run the onEachFeature function once for each piece of data in the array
-    var earthquakes = L.geojson(earthquakeData, {
-        onEachFeature: onEachFeature,
-        pointToLayer: CircleMaker
-    });
-
-    // Send earthquakes layer to the createMap function
-    createMap(earthquakes);
+// create a function that changes marker size depending on the magnitute values
+function markerSize(mag){
+    return mag * 5
 }
 
-function createMap(earthquakes) {
-
-    // Define streetmap and Satellite layers
-    var streetmap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-        attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
-        tileSize: 512,
-        maxZoom: 18,
-        zoomOffset: -1,
-        id: "mapbox/streets-v11",
-        accessToken: API_KEY
-    });
-
-    var Satellite = L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-        attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> , Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-        maxZoom: 18,
-        id: "satellite-v9",
-        accessToken: API_KEY
-    });
-
-
-    var lightmap = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-        attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
-        tileSize: 512,
-        maxZoom: 18,
-        zoomOffset: -1,
-        id: "mapbox/light-v10",
-        accessToken: API_KEY
-    });
-    // baseMaps object 
-    var baseMaps = {
-        "Street Map": streetmap,
-        "Light Map": lightmap,
-        "Satellite Map": Satellite
-    };
-
-    // Create overlay object 
-    var overlayMaps = {
-        Earthquakes: earthquakes
-    };
-
-    // Create our map, giving it the streetmap and earthquakes layers 
-    var myMap = L.map("mapid", {
-        center: [
-            37.09, -95.71
-        ],
-        zoom: 5,
-        layers: [streetmap, earthquakes]
-    });
-
-    lightmap.addTo(myMap);
-
-    // Create a legend to display information about the map
-    var info = L.control({
-        position: "bottomright"
-    });
-    // Add the info legend to map
-    info.addTo(myMap);
-
-    // Create a layer control
-    // Pass in our baseMaps and overlayMaps
-    // Add the layer control to the map
-    L.control.layers(baseMaps, overlayMaps, {
-        collapsed: false
-    }).addTo(myMap);
+// colors for circle markers
+function getColors(d) {
+  if (d < 1){
+    return "#B7DF5F"
+  }
+  else if ( d < 2){
+    return "#DCED11"
+  }
+  else if (d < 3){
+    return "#EDD911"
+  }
+  else if (d < 4){
+    return "#EDB411"
+  }
+  else if (d < 5 ){
+    return "#ED7211"
+  }
+  else {
+    return "#ED4311"
+  }
 };
+
+// create markers
+function createCircleMarker(feature, latlng ){
+
+// change the symbol's appearance
+var markerOptions = {
+    radius: markerSize(feature.properties.mag),
+    fillColor: getColors(feature.properties.mag),
+    color: "black",
+    weight: 1,
+    opacity: 1,
+    fillOpacity: 0.8
+  }
+  return L.circleMarker( latlng, markerOptions );
+};
+  
+// Use d3 request
+d3.json(queryUrl, function(data) {
+
+  console.log(data)
+
+  var earthquakes = data.features
+
+  console.log(earthquakes)
+  
+  // loop through the data 
+  earthquakes.forEach(function(result){
+    //console.log(result.properties)
+    L.geoJSON(result,{
+      pointToLayer: createCircleMarker
+      // add popups to the circle markers to display data
+    }).bindPopup("Date: " + new Date(result.properties.time) + "<br>Place: " + result.properties.place + "<br>Magnitude: " + result.properties.mag).addTo(myMap)
+  });
+
+  //create legends 
+  var legend = L.control({position: "bottomright" });
+  legend.onAdd = function(){
+    // create div for the legend
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = [0, 1, 2, 3, 4, 5]
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColors(grades[i]) + '"></i> ' +
+            grades[i] + (grades[i +1 ] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+    return div;
+  };
+  legend.addTo(myMap);
+});
